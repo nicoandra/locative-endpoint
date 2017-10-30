@@ -5,9 +5,9 @@ const express = require('express')
       , securityRouter = express.Router()
       , bodyParser = require('body-parser')
       , path = require('path')
-      , apiPort = 58971
-      , securityPort = 58972
       , config = require(path.join(__dirname,'config','config.js'))
+      , apiPort = config.ports.api
+      , securityPort = config.ports.security
       , crypto = require('crypto')
 
 
