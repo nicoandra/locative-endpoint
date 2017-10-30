@@ -32,8 +32,21 @@ apiRouter.get('/:username/:devicename/:hash/:inOut', function(req, res, next){
   res.status(200).json({})
 })
 
+apiRouter.get("/", function(req, res, next){
+  res.send("Good find. There's nothing to do here.")
+  return ;
+})
+
 securityRouter.get('/', function(req, res, next){
-  res.status(200).json(presenceStatus)
+
+let response = {
+  status: {
+    uptime : process.uptime()
+  },
+  presence: presenceStatus
+}
+
+  res.status(200).json(response)
 })
 
 securityRouter.post('/', function(req, res, next){

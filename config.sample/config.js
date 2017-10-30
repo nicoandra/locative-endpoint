@@ -1,6 +1,6 @@
 module.exports = {
   ports : {
-    api: 12345
+    api: 12345,
     security: 12346
   },
   keys : {
