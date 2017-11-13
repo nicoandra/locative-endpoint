@@ -131,6 +131,7 @@ securityApp.use('/', securityRouter)
 
 apiApp.listen(apiPort, function(){
   console.log("API ready on port", apiPort)
+  console.log("Use http://127.0.0.1:"+apiPort+"/fence/nico/moto5/" + getHash("nico", "moto5", "in") + "/in \nand http://127.0.0.1:"+apiPort+"/fence/nico/moto5/" + getHash("nico", "moto5", "out") + "/out to set status" )
 })
 
 securityApp.listen(securityPort, function(){
@@ -152,44 +153,3 @@ function validateHash(username, devicename, inOut, receivedHash){
   return generatedHash === receivedHash;
 
 }
-
-
-/*hmac.update("HELLO DAMN");
-console.log(config, hmac.digest('base64'));
-*/
-
-/* Create these endpoints:
-
-1-apiPort Leaving the fence (/fence/{username}/{devicename}/{devicehash}/out )
-2-apiPort Entering the fence  (/fence/{username}/{devicename}/{devicehash}/in )
-3-securityPort Post username and devicename; and get back the URL where the device should post the status
-4-securityPort Query status: /fence/status , which will return a JSON with the following info
-
-{
-  username1 : {
-  devicename1: (in/out),
-  devicename2: (in/out)
-  devicename3: (in/out)
-},
-username2 : {
-devicename1: (in/out),
-devicename2: (in/out)
-devicename3: (in/out)
-},
-}
-5-Set up the following rules in the firewall:
-
-
-- Allow connections to port 58974 from the local network
-iptables -I
-
-- Allow
-6-Create new user group applications + user applications to run both lightmanager and opengps endpoints
-
-2605:8d80:5e4:5ea6:a070:94f4:eb58:69a1
-2605:8d80:5e4:5ea6:58f6:3a20:fe3:ad6d
-2605:8d80:5e4:5ea6:6bf2:3fd4:91d7:23cc
-24.114.94.0-255
-2605:8d80:5e4:5ea6:9b2:5ba2:b910:2ce4
-
-*/
