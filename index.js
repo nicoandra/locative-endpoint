@@ -29,6 +29,13 @@ apiRouter.get('/:username/:devicename/:hash/:inOut', function(req, res, next){
   let devicename = req.params.devicename
   let inOut = req.params.inOut === "in"
 
+
+  if(!username || !devicename){
+    console.log("Missing username or device name");
+    return res.status(401).json({ reason: "Missing values"});
+
+  }
+
   if(!validateHash(username, devicename, (inOut ? "in" : "out"), req.params.hash)){
     console.log(req.params.hash, "does not match");
     res.status(401).json({ reason: "Invalid hash"});
@@ -112,7 +119,6 @@ let response = {
 })
 
 securityRouter.post('/', function(req, res, next){
-  console.log("POST", req.body)
   try {
     let inHash = getHash(req.body.username, req.body.devicename, 'in') ;
     let inUrl = [':' + apiPort, 'fence', req.body.username, req.body.devicename, inHash, 'in'].join('/')
