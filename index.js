@@ -3,6 +3,7 @@ const express = require('express')
       , apiRouter = express.Router()
       , securityApp = express()
       , securityRouter = express.Router()
+      , defaultApp = express()
       , bodyParser = require('body-parser')
       , path = require('path')
       , config = require(path.join(__dirname,'config','config.js'))
@@ -135,6 +136,8 @@ securityRouter.post('/', function(req, res, next){
 apiApp.use('/fence', apiRouter)
 securityApp.use('/', securityRouter)
 
+
+
 apiApp.listen(apiPort, function(){
   console.log("API ready on port", apiPort)
   console.log("Use http://127.0.0.1:"+apiPort+"/fence/nico/moto5/" + getHash("nico", "moto5", "in") + "/in \nand http://127.0.0.1:"+apiPort+"/fence/nico/moto5/" + getHash("nico", "moto5", "out") + "/out to set status" )
@@ -143,6 +146,29 @@ apiApp.listen(apiPort, function(){
 securityApp.listen(securityPort, function(){
   console.log("SecurityApp ready on port", securityPort)
 })
+
+
+defaultApp.get('/', function(req, res, next){
+	res.send("App up and running");
+});
+
+defaultApp.use(function (err, req, res, next) {
+  console.error(err.stack)
+  res.status(500).send('Something broke!')
+})
+
+
+defaultApp.on('error', function(err){
+  console.log("Handled error event", err)
+})
+
+try {
+	/*defaultApp.listen(80, function(){
+		console.log("Default app is running in port 80");
+	});*/
+} catch( err){
+	console.log("Default app is not listening in port 80. Something went wrong");
+}
 
 function getHash(username, devicename, inOut){
   let hmac = crypto.createHmac('sha256', config.keys.endpointKey);
@@ -157,5 +183,4 @@ function getHash(username, devicename, inOut){
 function validateHash(username, devicename, inOut, receivedHash){
   let generatedHash = getHash(username, devicename, inOut);
   return generatedHash === receivedHash;
-
 }
