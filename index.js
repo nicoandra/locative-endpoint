@@ -163,9 +163,9 @@ defaultApp.on('error', function(err){
 })
 
 try {
-	/*defaultApp.listen(80, function(){
+	defaultApp.listen(80, function(){
 		console.log("Default app is running in port 80");
-	});*/
+	});
 } catch( err){
 	console.log("Default app is not listening in port 80. Something went wrong");
 }
