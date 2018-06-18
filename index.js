@@ -4,11 +4,12 @@ const apiApp = express();
 const apiRouter = express.Router();
 const bodyParser = require('body-parser');
 const path = require('path');
-const request = require('request');
+const request = require('request-promise');
 
 const config = require(path.join(__dirname, 'config', 'config.js'));
 const apiPort = config.ports.api;
 const crypto = require('crypto');
+
 
 apiRouter.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
@@ -26,30 +27,22 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
       validHash = getHash(username, devicename);
       console.log(req.params.hash, 'does not match with ', validHash);
       res.status(401).json({ reason: 'Invalid hash' });
-      return
+      return;
     }
 
-    console.log(req.body);
+    const url = config.homeAssistant.url.replace(':username', username).replace(':devicename', devicename);
 
-    const uri = config.homeAssistant.uri.replace(':username', username).replace(':devicename', devicename);
-    const url = config.homeAssistant.protocol + '://' + config.homeAssistant.host + ":" + config.homeAssistant.port + uri;
-
-    const response = new Promise((ok, ko) => {
-      request.post({ url }).send('ABC', function(err, res){
-        if(err){
-          return ko(err)
-        };
-        return ok(res)
+    let response;
+    try {
+      response = await request.post({ url , data: req.body}).then((res) => res).catch((err) => {
+        throw new Error("REQUEST FAILED");
       })
-    }).then((res) => {
-      return res.body
-    });
+    } catch(err){
+      return next(err);
+    }
 
 
-
-    console.log(url, response)
-
-    res.json({});
+    res.json( response );
     return next();
   } catch (err) {
     console.log(err.message, err.stack);
@@ -58,18 +51,24 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 });
 
 const welcome = (req, res, next) => {
-  res.send("IP logged: " + req.connection.remoteAddress + ". Good find. There's nothing to do here.");
+  res.send(`IP logged: ${req.connection.remoteAddress}. Good find. There's nothing to do here.`);
   return next();
-}
+};
 
 apiRouter.get('/', welcome);
 
 apiApp.use('/fence', apiRouter);
-apiApp.get('/', welcome)
+apiApp.get('/', welcome);
 
 apiApp.listen(apiPort, () => {
   console.log('API ready on port', apiPort);
 });
+
+
+apiApp.on('error', function(err){
+  console.log("ERROR EVENT CAUGHT!", err)
+})
+
 
 function getHash(username, devicename) {
   const hmac = crypto.createHmac('sha256', config.keys.endpointKey);
