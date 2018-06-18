@@ -4,26 +4,15 @@ const apiApp = express();
 const apiRouter = express.Router();
 const bodyParser = require('body-parser');
 const path = require('path');
+const request = require('request');
 
 const config = require(path.join(__dirname, 'config', 'config.js'));
 const apiPort = config.ports.api;
 const crypto = require('crypto');
 
-securityApp.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+apiRouter.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
-function changeAnyoneAtHome(newStatus) {
-  if (anyoneAtHome == newStatus) {
-    return;
-  }
-  anyoneAtHome = newStatus;
-  lastStatusChange = new Date();
-}
-
-const presenceStatus = {};
-let anyoneAtHome = false;
-let lastStatusChange = new Date();
-
-apiRouter.post('/:username/:devicename/:hash', (req, res, next) => {
+apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
   try {
     const username = req.params.username;
     const devicename = req.params.devicename;
@@ -34,14 +23,33 @@ apiRouter.post('/:username/:devicename/:hash', (req, res, next) => {
     }
 
     if (!validateHash(username, devicename, req.params.hash)) {
-      console.log(req.params.hash, 'does not match');
+      validHash = getHash(username, devicename);
+      console.log(req.params.hash, 'does not match with ', validHash);
       res.status(401).json({ reason: 'Invalid hash' });
-      return;
+      return
     }
 
     console.log(req.body);
 
-    res.status(200).json({});
+    const uri = config.homeAssistant.uri.replace(':username', username).replace(':devicename', devicename);
+    const url = config.homeAssistant.protocol + '://' + config.homeAssistant.host + ":" + config.homeAssistant.port + uri;
+
+    const response = new Promise((ok, ko) => {
+      request.post({ url }).send('ABC', function(err, res){
+        if(err){
+          return ko(err)
+        };
+        return ok(res)
+      })
+    }).then((res) => {
+      return res.body
+    });
+
+
+
+    console.log(url, response)
+
+    res.json({});
     return next();
   } catch (err) {
     console.log(err.message, err.stack);
@@ -49,62 +57,18 @@ apiRouter.post('/:username/:devicename/:hash', (req, res, next) => {
   }
 });
 
+const welcome = (req, res, next) => {
+  res.send("IP logged: " + req.connection.remoteAddress + ". Good find. There's nothing to do here.");
+  return next();
+}
 
-apiRouter.get('/', (req, res, next) => {
-  console.log(req);
-  res.send("IP logged. Good find. There's nothing to do here.");
-});
-
-securityRouter.get('/', (req, res, next) => {
-  const response = {
-    status: {
-      uptime: process.uptime(),
-    },
-    presence: { lastStatusChange, anyoneAtHome, users: presenceStatus },
-  };
-
-  res.status(200).json(response);
-});
-
-securityRouter.post('/', (req, res, next) => {
-  try {
-    const inHash = getHash(req.body.username, req.body.devicename, 'in');
-    const inUrl = [`:${apiPort}`, 'fence', req.body.username, req.body.devicename, inHash, 'in'].join('/');
-
-    const outHash = getHash(req.body.username, req.body.devicename, 'out');
-    const outUrl = [`:${apiPort}`, 'fence', req.body.username, req.body.devicename, outHash, 'out'].join('/');
-    res.status(200).json({ in: inUrl, out: outUrl });
-  } catch (excp) {
-    res.status(500).json(excp);
-  }
-});
+apiRouter.get('/', welcome);
 
 apiApp.use('/fence', apiRouter);
-securityApp.use('/', securityRouter);
-
+apiApp.get('/', welcome)
 
 apiApp.listen(apiPort, () => {
   console.log('API ready on port', apiPort);
-  console.log(`Use http://127.0.0.1:${apiPort}/fence/nico/moto5/${getHash('nico', 'moto5', 'in')}/in \nand http://127.0.0.1:${apiPort}/fence/nico/moto5/${getHash('nico', 'moto5', 'out')}/out to set status`);
-});
-
-securityApp.listen(securityPort, () => {
-  console.log('SecurityApp ready on port', securityPort);
-});
-
-
-defaultApp.get('/', (req, res, next) => {
-  res.send('App up and running');
-});
-
-defaultApp.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-
-defaultApp.on('error', (err) => {
-  console.log('Handled error event', err);
 });
 
 function getHash(username, devicename) {
@@ -118,6 +82,6 @@ function getHash(username, devicename) {
 }
 
 function validateHash(username, devicename, receivedHash) {
-  const generatedHash = getHash(username, devicename, inOut);
+  const generatedHash = getHash(username, devicename);
   return generatedHash === receivedHash;
 }
