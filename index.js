@@ -9,7 +9,18 @@ const request = require('request-promise');
 const config = require(path.join(__dirname, 'config', 'config.js'));
 const apiPort = config.ports.api;
 const crypto = require('crypto');
+const RateLimit = require('express-rate-limit');
 
+
+
+const rateLimiter = new RateLimit({
+  windowMs: 20*1000, // 20 sec
+  max: 10, // limit each IP to 100 requests per windowMs
+  delayMs: 0 // disable delaying - full speed until the max limit is reached
+});
+
+//  apply to all requests
+apiApp.use(rateLimiter);
 
 const authOptions = {
   user: config.homeAssistant.username, pass: config.homeAssistant.password,  sendImmediately: true
