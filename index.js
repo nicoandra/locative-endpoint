@@ -11,7 +11,10 @@ const apiPort = config.ports.api;
 const crypto = require('crypto');
 
 
-apiRouter.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+const authOptions = {
+  user: config.homeAssistant.username, pass: config.homeAssistant.password,  sendImmediately: true
+}
+apiRouter.use(bodyParser.json()); // for parsing application/x-www-form-urlencoded
 
 apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
   try {
@@ -20,13 +23,13 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
     if (!username || !devicename) {
       console.log('Missing username or device name');
-      return res.status(401).json({ reason: 'Missing values' });
+      return res.status(401).json({ reason: 'Missing values' , proxied: false});
     }
 
     if (!validateHash(username, devicename, req.params.hash)) {
       validHash = getHash(username, devicename);
       console.log(req.params.hash, 'does not match with ', validHash);
-      res.status(401).json({ reason: 'Invalid hash' });
+      res.status(401).json({ reason: 'Invalid hash' , proxied: false });
       return;
     }
 
@@ -34,10 +37,12 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
     let response;
     try {
-      response = await request.post({ url , data: req.body}).then((res) => res).catch((err) => {
-        throw new Error("REQUEST FAILED");
+      console.log("received", req.body)
+      response = await request.post({ auth: {...authOptions }, url , json: req.body }).then((res) => res).catch((err) => {
+        throw err
       })
     } catch(err){
+      console.log(response)
       return next(err);
     }
 
