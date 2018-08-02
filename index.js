@@ -48,7 +48,7 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
     let response;
     try {
-      console.log("received", req.body)
+      console.log(`Accepted connection from ${req.connection.remoteAddress}`)
       response = await request.post({ auth: {...authOptions }, url , json: req.body }).then((res) => res).catch((err) => {
         throw err
       })
@@ -67,6 +67,12 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 });
 
 const welcome = (req, res, next) => {
+
+  if(req.connection.remoteAddress === '::ffff:192.168.1.1.'){
+    res.redirect(':8123');
+    return next();
+  }
+
   res.send(`IP logged: ${req.connection.remoteAddress}. Good find. There's nothing to do here.`);
   return next();
 };
