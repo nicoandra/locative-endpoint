@@ -13,13 +13,27 @@ const RateLimit = require('express-rate-limit');
 
 
 
+
+const extractIpFromHeaders = function(req, res, next){
+  // Use only when Nginx set up as proxy. Otherwise the remoteIp value might be tampered by an attacker.
+  req.remoteIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  req.ip = req.remoteIp;
+  console.log("IP Middleware", req.remoteIp, req.headers);
+  return next();
+}
+
+apiRouter.use(extractIpFromHeaders);
+apiApp.use(extractIpFromHeaders);
+
+
 const rateLimiter = new RateLimit({
   windowMs: 20*1000, // 20 sec
   max: 10, // limit each IP to 100 requests per windowMs
   delayMs: 0 // disable delaying - full speed until the max limit is reached
 });
 
-//  apply to all requests
+//  apply to all requests. Rate limiter needs to go AFTER we've obtained the remote IP from the headers (as we're behind a reverse proxy)
+apiApp.enable("trust proxy"); // only if you're behind a reverse proxy (Heroku, Bluemix, AWS ELB, Nginx, etc)
 apiApp.use(rateLimiter);
 
 const authOptions = {
@@ -48,7 +62,8 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
     let response;
     try {
-      console.log(`Accepted connection from ${req.connection.remoteAddress}`)
+      const ip = req.remoteIp;
+      console.log(`Accepted connection from ${ip}`)
       response = await request.post({ auth: {...authOptions }, url , json: req.body }).then((res) => res).catch((err) => {
         throw err
       })
@@ -67,13 +82,15 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 });
 
 const welcome = (req, res, next) => {
+  console.log(req.headers);
+  const ip = req.remoteIp;
 
-  if(req.connection.remoteAddress === '::ffff:192.168.1.1.'){
+  if(ip === '::ffff:192.168.1.1.'){
     res.redirect(':8123');
     return next();
   }
 
-  res.send(`IP logged: ${req.connection.remoteAddress}. Good find. There's nothing to do here.`);
+  res.send(`IP logged: ${ip}. Good find. There's nothing to do here.`);
   return next();
 };
 

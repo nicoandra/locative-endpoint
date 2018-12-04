@@ -1,6 +1,6 @@
 module.exports = {
   ports: {
-    api: 12345,
+    api: process.ENV['LOCATIVE_PORT'] || 12345,
   },
   keys: {
     endpointKey: 'INSERT RANDOM KEY HERE',
