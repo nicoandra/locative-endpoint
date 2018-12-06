@@ -7,7 +7,7 @@ module.exports = {
     endpointSalt: 'Spark some salt in here.',
   },
   homeAssistant: {
-    url: 'http://127.0.0.1:8123/api/owntracks/:username/:devicename', // Keep :username and :devicename so
+    url: 'http://homeassistant:8123/api/owntracks/:username/:devicename', // Keep :username and :devicename so
     username: 'homeassistant',
     password: 'welcome'
   },
