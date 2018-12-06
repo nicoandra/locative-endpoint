@@ -18,13 +18,11 @@ const extractIpFromHeaders = function(req, res, next){
   // Use only when Nginx set up as proxy. Otherwise the remoteIp value might be tampered by an attacker.
   req.remoteIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   req.ip = req.remoteIp;
-  console.log("IP Middleware", req.remoteIp, req.headers);
   return next();
 }
 
 apiRouter.use(extractIpFromHeaders);
 apiApp.use(extractIpFromHeaders);
-
 
 const rateLimiter = new RateLimit({
   windowMs: 20*1000, // 20 sec
@@ -72,7 +70,7 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
       return next(err);
     }
 
-
+    console.log("Response:", response)
     res.json( response );
     return next();
   } catch (err) {
