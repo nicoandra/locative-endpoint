@@ -7,7 +7,14 @@ module.exports = {
     endpointSalt: 'Spark some salt in here.',
   },
   homeAssistant: {
-    url: 'http://homeassistant:8123/api/owntracks/:username/:devicename', // Keep :username and :devicename so
+    urls: {
+      oneUser : {
+        oneDevice : {
+          uri : '/api/webhook/YOUR_LONG_KEY'
+        }
+      }
+    },
+    host: 'http://homeassistant:8123', // /api/owntracks/:username/:devicename', // Keep :username and :devicename so
     username: 'homeassistant',
     password: 'welcome'
   },

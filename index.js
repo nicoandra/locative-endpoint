@@ -11,9 +11,6 @@ const apiPort = config.ports.api;
 const crypto = require('crypto');
 const RateLimit = require('express-rate-limit');
 
-
-
-
 const extractIpFromHeaders = function(req, res, next){
   // Use only when Nginx set up as proxy. Otherwise the remoteIp value might be tampered by an attacker.
   req.remoteIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -30,6 +27,20 @@ const rateLimiter = new RateLimit({
   delayMs: 0 // disable delaying - full speed until the max limit is reached
 });
 
+
+
+const firewallOpener = new RateLimit({
+  windowMs: 10*1000, // 10 sec
+  max: 4, // limit each IP to 3 requests per windowMs
+  delayMs: 0, // disable delaying - full speed until the max limit is reached
+  onLimitReached: (req, res, next) => {
+    console.log("Firewall would have been unlocked for " , req.ip);
+    // next();
+  },
+  message: '{"Message":"Went through"}'
+});
+
+
 //  apply to all requests. Rate limiter needs to go AFTER we've obtained the remote IP from the headers (as we're behind a reverse proxy)
 apiApp.enable("trust proxy"); // only if you're behind a reverse proxy (Heroku, Bluemix, AWS ELB, Nginx, etc)
 apiApp.use(rateLimiter);
@@ -38,6 +49,13 @@ const authOptions = {
   user: config.homeAssistant.username, pass: config.homeAssistant.password,  sendImmediately: true
 }
 apiRouter.use(bodyParser.json()); // for parsing application/x-www-form-urlencoded
+
+apiRouter.get('/testme', async (req, res, next) => {
+  firewallOpener(req, res, function(){
+    res.send("Hit!");
+    next();
+  });
+})
 
 apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
   try {
@@ -56,12 +74,12 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
       return;
     }
 
-    const url = config.homeAssistant.url.replace(':username', username).replace(':devicename', devicename);
-
     let response;
     try {
+      const url = config.homeAssistant.host + config.homeAssistant.urls[username][devicename].uri;
+
       const ip = req.remoteIp;
-      console.log(`Accepted connection from ${ip}`)
+      console.log(`Accepted connection from ${ip}, hit ${url}`);
       response = await request.post({ auth: {...authOptions }, url , json: req.body }).then((res) => res).catch((err) => {
         throw err
       })
