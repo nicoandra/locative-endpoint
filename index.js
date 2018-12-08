@@ -62,6 +62,8 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
     const username = req.params.username;
     const devicename = req.params.devicename;
 
+	console.log(req.headers);
+
     if (!username || !devicename) {
       console.log('Missing username or device name');
       return res.status(401).json({ reason: 'Missing values' , proxied: false});
@@ -80,7 +82,15 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
       const ip = req.remoteIp;
       console.log(`Accepted connection from ${ip}, hit ${url}`);
-      response = await request.post({ auth: {...authOptions }, url , json: req.body }).then((res) => res).catch((err) => {
+      response = await request.post({ 
+		auth: {...authOptions }, 
+		url,
+		json: req.body,
+		headers : {
+			'x-limit-u': username,
+			'x-limit-d': devicename
+		}
+	 }).then((res) => res).catch((err) => {
         throw err
       })
     } catch(err){
