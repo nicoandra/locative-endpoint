@@ -69,7 +69,7 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
       return res.status(401).json({ reason: 'Missing values' , proxied: false});
     }
 
-    if (!validateHash(username, devicename, req.params.hash)) {
+    if (false && !validateHash(username, devicename, req.params.hash)) {
       validHash = getHash(username, devicename);
       console.log(req.params.hash, 'does not match with ', validHash);
       res.status(401).json({ reason: 'Invalid hash' , proxied: false });
@@ -78,7 +78,9 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
 
     let response;
     try {
-      const url = config.homeAssistant.host + config.homeAssistant.urls[username][devicename].uri;
+      // const url = config.homeAssistant.host + config.homeAssistant.urls[username][devicename].uri;
+      const url = config.homeAssistant.host + req.params.hash;
+
 
       const ip = req.remoteIp;
       console.log(`Accepted connection from ${ip}, hit ${url}`);
