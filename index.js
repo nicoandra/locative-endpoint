@@ -26,8 +26,6 @@ const authOptions = {
 apiRouter.use(bodyParser.json()); // for parsing application/x-www-form-urlencoded
 
 const findHAWebhookFromHash = (list, hash) => {
-
-  console.log("HERE IS THE LIST", list);
   if (hash.length < 6) {
     throw new Error("Provided hash is too short")
   }
@@ -42,7 +40,6 @@ const findHAWebhookFromHash = (list, hash) => {
   return config.homeAssistant.host + url;
 }
 
-
 apiRouter.use((req, res, next) => {
   if(req.method !== 'POST') {
     // Applies to POST only
@@ -51,11 +48,11 @@ apiRouter.use((req, res, next) => {
 
   let [_, username, devicename, hash] = req.url.split('/');
   if (!username || !devicename || !hash || hash.length < 6) {
-    return next("Missing username, devicename or hash");
+    return next("Missing username, devicename or hash. Or your hash is too short?");
   }
 
   if (!config.homeAssistant.urls[username] || !config.homeAssistant.urls[username][devicename]) {
-    return next("Such username and devicename don't seem to exist in my configuration file.")
+    return next("Such username and devicename don't seem to exist in my configuration file. But you seem to be on track.")
   }
 
   req.username = username;
@@ -63,6 +60,7 @@ apiRouter.use((req, res, next) => {
   req.hash = hash;
   req.proxyTo = findHAWebhookFromHash(config.homeAssistant.urls[username][devicename], hash);
 
+  console.log("Request made sense. Enriching it with information to proxy it properly");
   return next();
 })
 
@@ -102,18 +100,6 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
   
 });
 
-const welcome = (req, res, next) => {
-  console.log(req.headers);
-  const ip = req.remoteIp;
-
-  if(ip === '::ffff:192.168.1.1.'){
-    res.redirect(':8123');
-    return next();
-  }
-
-  res.send(`IP logged: ${ip}. Good find. There's nothing to do here.`);
-  return next();
-};
 
 apiApp.use('/', apiRouter);
 
