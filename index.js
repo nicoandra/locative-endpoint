@@ -70,7 +70,7 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
       const url = req.proxyTo;
       const ip = req.remoteIp;
 
-      console.log(`Accepted connection from ${ip}, proxying to ${url}`);
+      console.log(`> Accepted connection from ${ip}, proxying to ${url}`);
 
       return new Promise((ok, ko) => {
         request.post({
@@ -85,10 +85,10 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
           if (err) return ko(err);
           return ok(response);
         })
-      }).then((res) => {
-        console.log("Response:", response)
-        res.json( response );
-        return next();   
+      }).then((response) => {
+        console.log("< Response:", response)
+        res.json(response);
+        return next();
       }).catch((err) => {
         console.log(err)
         return next(err);
