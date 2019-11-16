@@ -86,8 +86,8 @@ apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
           return ok(response);
         })
       }).then((response) => {
-        console.log("< Response:", response)
-        res.json(response);
+        console.log("< Response:", response.body)
+        res.json(response.body);
         return next();
       }).catch((err) => {
         console.log(err)
