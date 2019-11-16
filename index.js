@@ -1,5 +1,5 @@
 const express = require('express');
-
+const apiApp = express();
 const apiRouter = express.Router();
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -19,54 +19,87 @@ apiRouter.use(extractIpFromHeaders);
 
 //  apply to all requests. Rate limiter needs to go AFTER we've obtained the remote IP from the headers (as we're behind a reverse proxy)
 apiApp.enable("trust proxy"); // only if you're behind a reverse proxy (Heroku, Bluemix, AWS ELB, Nginx, etc)
-apiApp.use(rateLimiter);
 
 const authOptions = {
   user: config.homeAssistant.username, pass: config.homeAssistant.password,  sendImmediately: true
 }
 apiRouter.use(bodyParser.json()); // for parsing application/x-www-form-urlencoded
 
+const findHAWebhookFromHash = (list, hash) => {
+
+  console.log("HERE IS THE LIST", list);
+  if (hash.length < 6) {
+    throw new Error("Provided hash is too short")
+  }
+
+  const url = list.filter((hookUrl) => {  
+    return hookUrl.includes(hash);
+  })
+
+  if (!url.length) {
+    throw new Error("No matching URL with hash " + hash)
+  }
+  return config.homeAssistant.host + url;
+}
+
+
+apiRouter.use((req, res, next) => {
+  if(req.method !== 'POST') {
+    // Applies to POST only
+    return next();
+  }
+
+  let [_, username, devicename, hash] = req.url.split('/');
+  if (!username || !devicename || !hash || hash.length < 6) {
+    return next("Missing username, devicename or hash");
+  }
+
+  if (!config.homeAssistant.urls[username] || !config.homeAssistant.urls[username][devicename]) {
+    return next("Such username and devicename don't seem to exist in my configuration file.")
+  }
+
+  req.username = username;
+  req.devicename = devicename;
+  req.hash = hash;
+  req.proxyTo = findHAWebhookFromHash(config.homeAssistant.urls[username][devicename], hash);
+
+  return next();
+})
+
 apiRouter.post('/:username/:devicename/:hash', async (req, res, next) => {
-  try {
-    const username = req.params.username;
-    const devicename = req.params.devicename;
-
-	  console.log(req.headers);
-    if (!username || !devicename) {
-      console.log('Missing username or device name');
-      return res.status(401).json({ reason: 'Missing values' , proxied: false});
-    }
-
-    let response;
+    
     try {
-      // const url = config.homeAssistant.host + config.homeAssistant.urls[username][devicename].uri;
-      const url = config.homeAssistant.host + req.params.hash;
-
+      const url = req.proxyTo;
       const ip = req.remoteIp;
-      console.log(`Accepted connection from ${ip}, hit ${url}`);
-      response = await request.post({ 
-    		auth: {...authOptions }, 
-		    url,
-		    json: req.body,
-		    headers : {
-          'x-limit-u': username,
-          'x-limit-d': devicename
-    		}
-	    }).then((res) => res).catch((err) => {
-        throw err
+
+      console.log(`Accepted connection from ${ip}, proxying to ${url}`);
+
+      return new Promise((ok, ko) => {
+        request.post({
+          auth: {...authOptions }, 
+          url,
+          json: req.body,
+          headers : {
+            'x-limit-u': req.username,
+            'x-limit-d': req.devicename
+          }
+        }, (err, response) => {
+          if (err) return ko(err);
+          return ok(response);
+        })
+      }).then((res) => {
+        console.log("Response:", response)
+        res.json( response );
+        return next();   
+      }).catch((err) => {
+        console.log(err)
+        return next(err);
       })
     } catch(err){
-      console.log(response)
+      console.log(err)
       return next(err);
     }
-
-    console.log("Response:", response)
-    res.json( response );
-    return next();
-  } catch (err) {
-    console.log(err.message, err.stack);
-    return next(err);
-  }
+  
 });
 
 const welcome = (req, res, next) => {
@@ -82,7 +115,7 @@ const welcome = (req, res, next) => {
   return next();
 };
 
-apiRouter.get('/', welcome);
+apiApp.use('/', apiRouter);
 
 apiApp.listen(apiPort, () => {
   console.log('API ready on port', apiPort);
